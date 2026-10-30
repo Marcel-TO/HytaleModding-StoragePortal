@@ -1,0 +1,53 @@
+$C = "../Common.ui";
+
+// One item of a grid: the item with its quantity in the bottom right corner.
+// Uses ItemSlot for proper item rendering with quality backgrounds.
+Group {
+  Anchor: (Width: 72, Height: 72);
+  Padding: 1;
+
+  ItemSlotButton #Button {
+    Anchor: (Full: 0);
+    LayoutMode: Full;
+    Padding: 2;
+    Style: (
+      Default: (
+        Background: #252f3a,
+      ),
+      Hovered: (
+        Background: #c9a050,
+      ),
+      Pressed: (
+        Background: #a08040,
+      ),
+      Disabled: (
+        Background: #1a1e24,
+      ),
+      Sounds: $C.@ButtonSounds,
+    );
+
+    Group #SlotBorder {
+      Anchor: (Full: 0);
+      Background: #1a2530;
+      Padding: 1;
+
+      ItemSlot #Slot {
+        Anchor: (Full: 0);
+        ShowQualityBackground: true;
+      }
+    }
+
+    // Quantity overlay (bottom-right corner, inside the border)
+    Label #Qty {
+      Anchor: (Right: 6, Bottom: 4);
+      Style: (
+        FontSize: 13,
+        TextColor: #ffffff,
+        HorizontalAlignment: End,
+        VerticalAlignment: End,
+        RenderBold: true,
+      );
+      Text: "";
+    }
+  }
+}

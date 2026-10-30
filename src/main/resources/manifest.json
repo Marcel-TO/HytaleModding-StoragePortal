@@ -1,0 +1,25 @@
+{
+    "Group": "Marcel-TO",
+    "Name": "StoragePortal",
+    "Version": "1.0.1",
+    "Description": "A Storage Portal that interacts with your entire Storage Room.",
+    "Authors": [
+        {
+            "Name": "Marcel-TO/McHawk"
+        }
+    ],
+    "Website": "",
+    "ServerVersion": ">=0.7.5",
+    "Dependencies": {
+        
+    },
+    "OptionalDependencies": {
+        
+    },
+    "DisabledByDefault": false,
+    "IncludesAssetPack": true,
+    "Main": "net.marcelto.hytale.StoragePortal",
+    "UpdateChecker": {
+        "CurseForge": ""
+    }
+}

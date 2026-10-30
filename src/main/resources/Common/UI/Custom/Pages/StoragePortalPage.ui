@@ -1,0 +1,91 @@
+$C = "../Common.ui";
+
+$C.@PageOverlay {}
+
+// Height leaves room for the title bar and the decorations on a 1280x720 viewport.
+$C.@DecoratedContainer {
+  Anchor: (Width: 800, Height: 660);
+
+  #Title {
+    Group {
+      LayoutMode: Left;
+
+      $C.@Title {
+        @Text = "Storage Portal";
+      }
+    }
+
+    $C.@HeaderSearch {}
+  }
+
+  #Content {
+    LayoutMode: Top;
+
+    // Summary of the containers in range, and the quick stack action
+    Group #InfoRow {
+      Anchor: (Height: 44);
+      LayoutMode: Left;
+
+      Label #ContainerInfo {
+        Style: (...$C.@DefaultLabelStyle, VerticalAlignment: Center);
+        Padding: (Left: 8);
+        FlexWeight: 1;
+        Text: "";
+      }
+
+      $C.@SecondaryTextButton #QuickStackButton {
+        @Anchor = (Width: 190);
+        Text: "Quick stack";
+      }
+    }
+
+    // Items of the containers around the portal
+    Group #StorageScroll {
+      FlexWeight: 1;
+      LayoutMode: TopScrolling;
+      ScrollbarStyle: $C.@DefaultScrollbarStyle;
+      Padding: (Top: 6, Left: 8, Right: 8);
+
+      Group #StorageGrid {
+        LayoutMode: LeftCenterWrap;
+      }
+    }
+
+    Group #Separator {
+      Anchor: (Height: 2);
+      Background: #19252F;
+    }
+
+    Label #InventoryTitle {
+      Style: (...$C.@DefaultLabelStyle, VerticalAlignment: Center);
+      Anchor: (Height: 24);
+      Padding: (Left: 8);
+      Text: "Your inventory";
+    }
+
+    // Items the player carries
+    Group #InventoryScroll {
+      Anchor: (Height: 156);
+      LayoutMode: TopScrolling;
+      ScrollbarStyle: $C.@DefaultScrollbarStyle;
+      Padding: (Top: 6, Left: 8, Right: 8);
+
+      Group #InventoryGrid {
+        LayoutMode: LeftCenterWrap;
+      }
+    }
+
+    Label #StatusLabel {
+      Anchor: (Height: 26);
+      Style: (
+        FontSize: 14,
+        TextColor: #7caacc,
+        HorizontalAlignment: Center,
+        VerticalAlignment: Center,
+      );
+      Text: "";
+    }
+  }
+}
+
+$C.@BackButton {}

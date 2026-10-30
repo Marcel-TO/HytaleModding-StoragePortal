@@ -1,0 +1,5 @@
+// Invisible spacer that fills out the last row of an item grid.
+// Same size as an item card.
+Group {
+  Anchor: (Width: 72, Height: 72);
+}
