@@ -6,7 +6,9 @@ import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import javax.annotation.Nonnull;
 import net.marcelto.hytale.interactions.OpenStoragePortalInteraction;
+import net.marcelto.hytale.storage.PortalBlock;
 import net.marcelto.hytale.storage.PortalViewers;
+import net.marcelto.hytale.systems.StoragePortalAnimationSystem;
 import net.marcelto.hytale.systems.StoragePortalCleanupSystem;
 import net.marcelto.hytale.systems.StoragePortalSystem;
 
@@ -28,10 +30,12 @@ public class StoragePortal extends JavaPlugin {
             OpenStoragePortalInteraction.CODEC);
     this.getEntityStoreRegistry().registerSystem(new StoragePortalSystem());
     this.getEntityStoreRegistry().registerSystem(new StoragePortalCleanupSystem());
+    this.getChunkStoreRegistry().registerSystem(new StoragePortalAnimationSystem());
   }
 
   @Override
   protected void shutdown() {
+    PortalBlock.clearPendingAnimations();
     PortalViewers.clear();
   }
 }

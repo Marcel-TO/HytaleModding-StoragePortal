@@ -18,6 +18,11 @@ public final class PortalViewers {
 
   private PortalViewers() {}
 
+  /** Returns whether a loaded portal should keep its lid open. */
+  public static boolean hasViewers(@Nonnull PortalKey key) {
+    return VIEWERS.containsKey(key);
+  }
+
   /**
    * Registers a viewer.
    *

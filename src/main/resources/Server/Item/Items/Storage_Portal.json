@@ -8,15 +8,17 @@
     "Furniture.Containers"
   ],
   "Set": "Furniture_Crude",
-  "Icon": "Icons/ItemsGenerated/Furniture_Crude_Chest_Small.png",
+  "Icon": "Icons/ItemsGenerated/Storage_Portal.png",
   "BlockType": {
-    "BlockParticleSetId": "Wood",
-    "BlockSoundSetId": "Wood",
-    "PhysicalMaterialId": "Wood",
-    "CustomModel": "Blocks/Decorative_Sets/Crude/Chest_Small.blockymodel",
+    "BlockParticleSetId": "Stone",
+    "BlockSoundSetId": "Stone",
+    "PhysicalMaterialId": "Stone",
+    "CustomModel": "Blocks/StoragePortal/Storage_Portal.blockymodel",
+    "CustomModelAnimation": "Blocks/StoragePortal/Storage_Portal_Idle.blockyanim",
+    "Looping": true,
     "CustomModelTexture": [
       {
-        "Texture": "Blocks/Decorative_Sets/Crude/Chest_Small_Texture.png",
+        "Texture": "Blocks/StoragePortal/Storage_Portal_Texture.png",
         "Weight": 1
       }
     ],
@@ -24,30 +26,29 @@
     "Flags": {},
     "Gathering": {
       "Breaking": {
-        "GatherType": "Woods"
+        "GatherType": "Benches"
       }
     },
+    "HitboxType": "Storage_Portal",
     "Material": "Solid",
     "Opacity": "Transparent",
-    "ParticleColor": "#63412c",
+    "ParticleColor": "#d9d1c7",
     "State": {
       "Definitions": {
         "CloseWindow": {
           "InteractionSoundEventId": "SFX_Chest_Wooden_Close",
-          "CustomModelAnimation": "Blocks/Animations/Chest/Chest_Close.blockyanim"
+          "CustomModelAnimation": "Blocks/Animations/Chest/Chest_Close.blockyanim",
+          "Looping": false
         },
         "OpenWindow": {
           "InteractionSoundEventId": "SFX_Chest_Wooden_Open",
-          "CustomModelAnimation": "Blocks/Animations/Chest/Chest_Open.blockyanim"
+          "CustomModelAnimation": "Blocks/Animations/Chest/Chest_Open.blockyanim",
+          "Looping": false
+        },
+        "OpenIdle": {
+          "CustomModelAnimation": "Blocks/StoragePortal/Storage_Portal_Open_Idle.blockyanim"
         }
       }
-    },
-    "Supporting": {
-      "Up": [
-        {
-          "FaceType": "Full"
-        }
-      ]
     },
     "Support": {
       "Down": [
@@ -69,7 +70,7 @@
         ]
       }
     },
-    "TextureComputedColor": "#573A23"
+    "TextureComputedColor": "#CBB582"
   },
   "Tags": {
     "Type": [
@@ -80,10 +81,10 @@
     ]
   },
   "IconProperties": {
-    "Scale": 0.55,
+    "Scale": 0.38,
     "Translation": [
       0,
-      -15
+      -28
     ],
     "Rotation": [
       22.5,
@@ -91,6 +92,6 @@
       22.5
     ]
   },
-  "ItemSoundSetId": "ISS_Blocks_Wood",
+  "ItemSoundSetId": "ISS_Blocks_Stone",
   "MaxStack": 1
 }
