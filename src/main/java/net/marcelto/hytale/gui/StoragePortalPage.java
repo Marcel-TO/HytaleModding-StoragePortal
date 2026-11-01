@@ -23,6 +23,7 @@ import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -55,13 +56,19 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private static final double MAX_DISTANCE = 8.0;
 
   private static final String HINT =
-      "Click takes a stack or stores all, right click moves one item";
+      "Click takes a stack or stores all, right click opens the item menu";
 
   private static final String TAKE_STACK = "TakeStack";
+  private static final String TAKE_HALF_STACK = "TakeHalfStack";
   private static final String TAKE_ONE = "TakeOne";
   private static final String DEPOSIT_ALL = "DepositAll";
+  private static final String DEPOSIT_STACK = "DepositStack";
+  private static final String DEPOSIT_HALF_STACK = "DepositHalfStack";
   private static final String DEPOSIT_ONE = "DepositOne";
   private static final String QUICK_STACK = "QuickStack";
+  private static final String SELECT_STORAGE = "SelectStorage";
+  private static final String SELECT_INVENTORY = "SelectInventory";
+  private static final String CLOSE_SELECTION = "CloseSelection";
 
   private final World world;
   private final Vector3i pos;
@@ -80,6 +87,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private String status = HINT;
   private String shownInfo;
   private String shownStatus;
+  private ItemSelection selection;
+  private ItemSelection shownSelection;
   private boolean registered;
 
   /**
@@ -108,8 +117,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     this.radius = radius;
     this.maxContainers = maxContainers;
     this.names = new ItemNames(playerRef.getLanguage());
-    this.storageView = new ItemGridView(STORAGE_GRID, TAKE_STACK, TAKE_ONE, keys);
-    this.inventoryView = new ItemGridView(INVENTORY_GRID, DEPOSIT_ALL, DEPOSIT_ONE, keys);
+    this.storageView = new ItemGridView(STORAGE_GRID, TAKE_STACK, SELECT_STORAGE, keys);
+    this.inventoryView = new ItemGridView(INVENTORY_GRID, DEPOSIT_ALL, SELECT_INVENTORY, keys);
   }
 
   @Override
@@ -130,10 +139,22 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
         "#QuickStackButton",
         EventData.of(PageEvent.ACTION, QUICK_STACK),
         false);
+    events.addEventBinding(
+        CustomUIEventBindingType.Activating,
+        "#SelectionCloseButton",
+        EventData.of(PageEvent.ACTION, CLOSE_SELECTION),
+        false);
+    events.addEventBinding(
+        CustomUIEventBindingType.Activating,
+        "#SelectionDismissArea",
+        EventData.of(PageEvent.ACTION, CLOSE_SELECTION),
+        false);
 
     search = "";
     shownInfo = null;
     shownStatus = null;
+    selection = null;
+    shownSelection = null;
     storageView.reset();
     inventoryView.reset();
     apply(ref, store, commands, events);
@@ -151,6 +172,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
 
   @Override
   public void onDismiss(@Nonnull Ref<EntityStore> ref, @Nonnull Store<EntityStore> store) {
+    selection = null;
+    shownSelection = null;
     if (!registered) return;
 
     registered = false;
@@ -177,7 +200,10 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       return;
     }
 
-    if (data.search != null) search = data.search.trim().toLowerCase(Locale.ROOT);
+    if (data.search != null) {
+      search = data.search.trim().toLowerCase(Locale.ROOT);
+      selection = null;
+    }
     if (data.action != null) status = perform(ref, store, data.action, data.key);
 
     refresh(ref, store);
@@ -211,6 +237,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
 
     boolean changed = storageView.update(commands, events, stored);
     changed |= inventoryView.update(commands, events, carried);
+    changed |= updateSelection(commands, events, stored, carried);
 
     final String info = describe(containers.size(), all, stored);
     if (!info.equals(shownInfo)) {
@@ -224,6 +251,52 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       changed = true;
     }
     return changed;
+  }
+
+  private boolean updateSelection(
+      @Nonnull UICommandBuilder commands,
+      @Nonnull UIEventBuilder events,
+      @Nonnull List<StoredItem> stored,
+      @Nonnull List<StoredItem> carried) {
+    if (selection != null) {
+      final ItemStack prototype = selection.prototype();
+      final List<StoredItem> source = selection.storage() ? stored : carried;
+      if (source.stream().noneMatch(item -> item.prototype().equals(prototype))) {
+        status = unavailableItem(selection.storage());
+        selection = null;
+      }
+    }
+    if (Objects.equals(selection, shownSelection)) return false;
+
+    shownSelection = selection;
+    commands.set("#ItemSelectionOverlay.Visible", selection != null);
+    if (selection == null) return true;
+
+    commands.set("#SelectionTitle.Text", names.of(selection.prototype()));
+    commands.set(
+        "#SelectionDirection.Text",
+        selection.storage() ? "Take from storage" : "Store in nearby containers");
+    final String key = String.valueOf(keys.idOf(selection.prototype()));
+    bindSelection(events, "#SelectionOne", selection.storage() ? TAKE_ONE : DEPOSIT_ONE, key);
+    bindSelection(
+        events,
+        "#SelectionHalfStack",
+        selection.storage() ? TAKE_HALF_STACK : DEPOSIT_HALF_STACK,
+        key);
+    bindSelection(events, "#SelectionStack", selection.storage() ? TAKE_STACK : DEPOSIT_STACK, key);
+    return true;
+  }
+
+  private static void bindSelection(
+      @Nonnull UIEventBuilder events,
+      @Nonnull String selector,
+      @Nonnull String action,
+      @Nonnull String key) {
+    events.addEventBinding(
+        CustomUIEventBindingType.Activating,
+        selector,
+        EventData.of(PageEvent.ACTION, action).append(PageEvent.KEY, key),
+        false);
   }
 
   @Nonnull
@@ -255,11 +328,21 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Store<EntityStore> store,
       @Nonnull String action,
       @Nullable String key) {
+    selection = null;
     return switch (action) {
+      case SELECT_STORAGE, SELECT_INVENTORY -> {
+        final boolean storage = SELECT_STORAGE.equals(action);
+        final ItemStack prototype = prototypeOf(key);
+        if (prototype == null) yield unavailableItem(storage);
+
+        selection = new ItemSelection(prototype, storage);
+        yield status;
+      }
+      case CLOSE_SELECTION -> status;
       case QUICK_STACK -> quickStack(ref, store);
-      case TAKE_STACK, TAKE_ONE -> take(ref, store, prototypeOf(key), TAKE_ONE.equals(action));
-      case DEPOSIT_ALL, DEPOSIT_ONE ->
-          deposit(ref, store, prototypeOf(key), DEPOSIT_ONE.equals(action));
+      case TAKE_STACK, TAKE_HALF_STACK, TAKE_ONE -> take(ref, store, prototypeOf(key), action);
+      case DEPOSIT_ALL, DEPOSIT_STACK, DEPOSIT_HALF_STACK, DEPOSIT_ONE ->
+          deposit(ref, store, prototypeOf(key), action);
       default -> {
         LOGGER.atFine().log("Ignoring an unknown portal action");
         yield status;
@@ -272,11 +355,11 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Ref<EntityStore> ref,
       @Nonnull Store<EntityStore> store,
       @Nullable ItemStack prototype,
-      boolean single) {
+      @Nonnull String action) {
     if (prototype == null) return "That item is no longer available";
 
     final List<ItemContainer> containers = containers();
-    final int wanted = single ? 1 : Math.max(1, prototype.getItem().getMaxStack());
+    final int wanted = transferAmount(action, prototype.getItem().getMaxStack());
     final CombinedItemContainer inventory =
         InventoryComponent.getCombined(store, ref, InventoryComponent.HOTBAR_FIRST);
 
@@ -293,7 +376,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Ref<EntityStore> ref,
       @Nonnull Store<EntityStore> store,
       @Nullable ItemStack prototype,
-      boolean single) {
+      @Nonnull String action) {
     if (prototype == null) return "That item is no longer in your inventory";
 
     final List<ItemContainer> containers = containers();
@@ -302,12 +385,29 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     final CombinedItemContainer inventory =
         InventoryComponent.getCombined(store, ref, InventoryComponent.STORAGE_FIRST);
 
-    final int wanted = single ? 1 : Integer.MAX_VALUE;
+    final int wanted = transferAmount(action, prototype.getItem().getMaxStack());
     final int moved = ItemTransfers.deposit(inventory, prototype, wanted, containers);
     if (moved > 0) return "Stored " + moved + "x " + names.of(prototype);
 
     return ItemTransfers.count(List.of(inventory), prototype) > 0
         ? "No room in nearby containers"
+        : "That item is no longer in your inventory";
+  }
+
+  private static int transferAmount(@Nonnull String action, int maxStack) {
+    return switch (action) {
+      case TAKE_ONE, DEPOSIT_ONE -> 1;
+      case TAKE_HALF_STACK, DEPOSIT_HALF_STACK -> Math.max(1, maxStack / 2);
+      case TAKE_STACK, DEPOSIT_STACK -> Math.max(1, maxStack);
+      case DEPOSIT_ALL -> Integer.MAX_VALUE;
+      default -> throw new IllegalArgumentException("Unknown transfer action: " + action);
+    };
+  }
+
+  @Nonnull
+  private static String unavailableItem(boolean storage) {
+    return storage
+        ? "That item is no longer available"
         : "That item is no longer in your inventory";
   }
 
@@ -353,6 +453,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
 
     return portalKey.equals(PortalBlock.keyAt(world, pos.x, pos.y, pos.z));
   }
+
+  private record ItemSelection(@Nonnull ItemStack prototype, boolean storage) {}
 
   /** What a client event can carry: an action on an item, or a new search text. */
   public static final class PageEvent {

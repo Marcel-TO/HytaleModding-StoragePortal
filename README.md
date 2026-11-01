@@ -23,11 +23,13 @@ Press **F** on the block, the same interact key a chest uses, to open the window
 | Top grid | Every item of the nearby containers, summed per item type. Hover an item to see its name and total. |
 | Search box | Filters the top grid by item name. |
 | Click an item (top grid) | Takes one stack into your inventory. |
-| Right-click an item (top grid) | Takes a single item. |
+| Right-click an item (top grid) | Opens a menu to take one item, half a stack, or one stack. |
 | Bottom grid | Your storage and hotbar items, summed per item type. |
 | Click an item (bottom grid) | Stores all of that item in nearby containers, preferring containers that already hold it. |
-| Right-click an item (bottom grid) | Stores a single item. |
+| Right-click an item (bottom grid) | Opens a menu to store one item, half a stack, or one stack. |
 | Quick stack | Moves every item of your inventory storage (not the hotbar) that a nearby container already holds into that container. |
+
+The right-click menu also shows **Highlight** as a disabled placeholder. Half a stack means half the item's maximum stack size, rounded down, with a minimum of one item. Transfers stop at the amount available or the destination's free space. Choose Cancel or click outside the menu to dismiss it without closing the portal.
 
 The window closes when you walk more than 8 blocks away from the portal, change world, or the block is removed. The glyph's lid stays open while anyone has the window open and closes when the last viewer leaves. Idle motion resumes after each lid animation, with the lid held in the appropriate pose.
 
