@@ -89,3 +89,80 @@ $C.@DecoratedContainer {
 }
 
 $C.@BackButton {}
+
+Group #ItemSelectionOverlay {
+  Anchor: (Full: 0);
+  LayoutMode: Full;
+  Visible: false;
+
+  Button #SelectionDismissArea {
+    Anchor: (Full: 0);
+    Style: (
+      Default: (Background: #000000(0.45)),
+      Hovered: (Background: #000000(0.45)),
+      Pressed: (Background: #000000(0.45)),
+    );
+  }
+
+  Group {
+    Anchor: (Full: 0);
+    LayoutMode: CenterMiddle;
+
+    Group #SelectionPanel {
+      Anchor: (Width: 320, Height: 308);
+      LayoutMode: Top;
+      Background: #1a2530;
+      Padding: 16;
+
+      Label #SelectionTitle {
+        Anchor: (Height: 44);
+        Style: (
+          ...$C.@DefaultLabelStyle,
+          RenderBold: true,
+          Wrap: true,
+          HorizontalAlignment: Center,
+          VerticalAlignment: Center,
+        );
+        Text: "";
+      }
+
+      Label #SelectionDirection {
+        Anchor: (Height: 28);
+        Style: (
+          FontSize: 14,
+          TextColor: #7caacc,
+          HorizontalAlignment: Center,
+          VerticalAlignment: Center,
+        );
+        Text: "";
+      }
+
+      $C.@SecondaryTextButton #SelectionOne {
+        @Anchor = (Height: 40);
+        Text: "One item";
+      }
+
+      $C.@SecondaryTextButton #SelectionHalfStack {
+        @Anchor = (Height: 40);
+        Text: "Half a stack";
+      }
+
+      $C.@SecondaryTextButton #SelectionStack {
+        @Anchor = (Height: 40);
+        Text: "One stack";
+      }
+
+      $C.@SecondaryTextButton #SelectionHighlight {
+        @Anchor = (Height: 40);
+        Text: "Highlight";
+        Disabled: true;
+        TooltipText: "Not implemented yet";
+      }
+
+      $C.@SecondaryTextButton #SelectionCloseButton {
+        @Anchor = (Height: 40);
+        Text: "Cancel";
+      }
+    }
+  }
+}
