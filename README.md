@@ -18,15 +18,20 @@ The item has the ID `Storage_Portal` and **no crafting recipe**. Get it from the
 
 Press **F** on the block, the same interact key a chest uses, to open the window.
 
+The window has two separate panels with a transparent gap between them. Your inventory and hotbar
+are on the left. Nearby storage, search, quick stack, and transfer messages are on the right.
+The world remains visible outside the panels.
+
 | Part | What it does |
 | --- | --- |
-| Top grid | Every item of the nearby containers, summed per item type. Hover an item to see its name and total. |
-| Search box | Filters the top grid by item name. |
-| Click an item (top grid) | Takes one stack into your inventory. |
-| Right-click an item (top grid) | Opens a menu to take one item, half a stack, or one stack. |
-| Bottom grid | Your storage and hotbar items, summed per item type. |
-| Click an item (bottom grid) | Stores all of that item in nearby containers, preferring containers that already hold it. |
-| Right-click an item (bottom grid) | Opens a menu to store one item, half a stack, or one stack. |
+| Storage grid (right panel) | Every item of the nearby containers, summed per item type. Hover an item to see its name and total. |
+| Search box | Filters the storage grid by item name. |
+| Click an item (storage grid) | Takes one stack into your inventory. |
+| Right-click an item (storage grid) | Opens a menu to take one item, half a stack, or one stack. |
+| Inventory grid | Every inventory storage slot in its original position, including empty slots, arranged in nine columns like the normal inventory. Each occupied slot shows its own stack quantity. |
+| Hotbar grid | Your hotbar in a separate row below the inventory, including empty slots. |
+| Click an item (inventory or hotbar) | Stores that slot's stack in nearby containers, preferring containers that already hold the item. Other stacks of the same item stay in your inventory. |
+| Right-click an item (inventory or hotbar) | Opens a menu to store one item, half a stack, or one stack from that slot. Empty slots have no click actions. |
 | Quick stack | Moves every item of your inventory storage (not the hotbar) that a nearby container already holds into that container. |
 
 The right-click menu also shows **Highlight** as a disabled placeholder. Half a stack means half the item's maximum stack size, rounded down, with a minimum of one item. Transfers stop at the amount available or the destination's free space. Choose Cancel or click outside the menu to dismiss it without closing the portal.

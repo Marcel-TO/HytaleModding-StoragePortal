@@ -11,7 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import javax.annotation.Nonnull;
 
-/** Merges the stacks of many containers into one sorted list of item kinds. */
+/** Lists individual stacks or merges containers into a sorted list of item kinds. */
 public final class ItemAggregator {
 
   private static final Comparator<StoredItem> ORDER =
@@ -22,6 +22,23 @@ public final class ItemAggregator {
           .thenComparing(StoredItem::total, Comparator.reverseOrder());
 
   private ItemAggregator() {}
+
+  /** Lists every slot separately, including empty slots, in container order. */
+  @Nonnull
+  public static List<StoredItem> stacks(
+      @Nonnull ItemContainer container, @Nonnull ItemNames names) {
+    final List<StoredItem> items = new ArrayList<>();
+    final short capacity = container.getCapacity();
+    for (short slot = 0; slot < capacity; slot++) {
+      final ItemStack stack = container.getItemStack(slot);
+      if (ItemStack.isEmpty(stack)) {
+        items.add(new StoredItem(ItemStack.EMPTY, "", 0));
+      } else {
+        items.add(new StoredItem(stack.withQuantity(1), names.of(stack), stack.getQuantity()));
+      }
+    }
+    return items;
+  }
 
   /** Sums every stack in the containers per item kind, sorted by name. */
   @Nonnull

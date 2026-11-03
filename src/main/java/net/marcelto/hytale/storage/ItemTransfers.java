@@ -61,6 +61,35 @@ public final class ItemTransfers {
   }
 
   /**
+   * Moves up to {@code wanted} items from one slot of the source into the containers, preferring
+   * the ones that already hold the same item. Nothing moves if the slot no longer holds an item
+   * stackable with {@code prototype}.
+   *
+   * @return how many items actually moved.
+   */
+  public static int depositSlot(
+      @Nonnull ItemContainer source,
+      short slot,
+      @Nonnull ItemStack prototype,
+      int wanted,
+      @Nonnull List<ItemContainer> targets) {
+    if (slot < 0 || slot >= source.getCapacity()) return 0;
+
+    int moved = 0;
+    for (final ItemContainer target : holdersFirst(targets, prototype)) {
+      if (moved >= wanted) break;
+
+      final ItemStack stack = source.getItemStack(slot);
+      if (ItemStack.isEmpty(stack) || !stack.isStackableWith(prototype)) break;
+
+      final int before = stack.getQuantity();
+      source.moveItemStackFromSlot(slot, Math.min(before, wanted - moved), target, false, true);
+      moved += Math.max(0, before - quantityAt(source, slot));
+    }
+    return moved;
+  }
+
+  /**
    * Moves every item of the source that a container already holds into that container.
    *
    * @return how many items actually moved.
