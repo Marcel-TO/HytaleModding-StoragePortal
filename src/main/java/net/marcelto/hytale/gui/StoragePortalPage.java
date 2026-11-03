@@ -51,12 +51,13 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private static final String PAGE = "Pages/StoragePortalPage.ui";
   private static final String STORAGE_GRID = "#StorageGrid";
   private static final String INVENTORY_GRID = "#InventoryGrid";
+  private static final String HOTBAR_GRID = "#HotbarGrid";
 
   /** The window closes when the player walks farther than this from the portal, in blocks. */
   private static final double MAX_DISTANCE = 8.0;
 
   private static final String HINT =
-      "Click takes a stack or stores all, right click opens the item menu";
+      "Click takes or stores a stack, right click opens the item menu";
 
   private static final String TAKE_STACK = "TakeStack";
   private static final String TAKE_HALF_STACK = "TakeHalfStack";
@@ -70,6 +71,9 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private static final String SELECT_INVENTORY = "SelectInventory";
   private static final String CLOSE_SELECTION = "CloseSelection";
 
+  private static final String STORAGE_SECTION = "storage";
+  private static final String HOTBAR_SECTION = "hotbar";
+
   private final World world;
   private final Vector3i pos;
   private final String portalKey;
@@ -82,6 +86,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private final ItemKeys keys = new ItemKeys();
   private final ItemGridView storageView;
   private final ItemGridView inventoryView;
+  private final ItemGridView hotbarView;
 
   private String search = "";
   private String status = HINT;
@@ -117,8 +122,25 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     this.radius = radius;
     this.maxContainers = maxContainers;
     this.names = new ItemNames(playerRef.getLanguage());
-    this.storageView = new ItemGridView(STORAGE_GRID, TAKE_STACK, SELECT_STORAGE, keys);
-    this.inventoryView = new ItemGridView(INVENTORY_GRID, DEPOSIT_ALL, SELECT_INVENTORY, keys);
+    this.storageView = new ItemGridView(STORAGE_GRID, TAKE_STACK, SELECT_STORAGE, keys, 9, 72);
+    this.inventoryView =
+        new ItemGridView(
+            INVENTORY_GRID,
+            DEPOSIT_ALL,
+            SELECT_INVENTORY,
+            keys,
+            InventoryComponent.DEFAULT_STORAGE_COLUMNS,
+            72,
+            STORAGE_SECTION);
+    this.hotbarView =
+        new ItemGridView(
+            HOTBAR_GRID,
+            DEPOSIT_ALL,
+            SELECT_INVENTORY,
+            keys,
+            InventoryComponent.DEFAULT_STORAGE_COLUMNS,
+            72,
+            HOTBAR_SECTION);
   }
 
   @Override
@@ -157,6 +179,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     shownSelection = null;
     storageView.reset();
     inventoryView.reset();
+    hotbarView.reset();
     apply(ref, store, commands, events);
   }
 
@@ -204,7 +227,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       search = data.search.trim().toLowerCase(Locale.ROOT);
       selection = null;
     }
-    if (data.action != null) status = perform(ref, store, data.action, data.key);
+    if (data.action != null) status = perform(ref, store, data.action, data.key, data.slot);
 
     refresh(ref, store);
   }
@@ -229,15 +252,19 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     final List<ItemContainer> containers = containers();
     final List<StoredItem> all = ItemAggregator.aggregate(containers, names);
     final List<StoredItem> stored = ItemAggregator.filter(all, search);
+    final InventoryComponent.Storage inventory =
+        accessor.getComponent(ref, InventoryComponent.Storage.getComponentType());
+    final InventoryComponent.Hotbar hotbar =
+        accessor.getComponent(ref, InventoryComponent.Hotbar.getComponentType());
     final List<StoredItem> carried =
-        ItemAggregator.aggregate(
-            List.of(
-                InventoryComponent.getCombined(accessor, ref, InventoryComponent.STORAGE_FIRST)),
-            names);
+        inventory == null ? List.of() : ItemAggregator.stacks(inventory.getInventory(), names);
+    final List<StoredItem> hotbarItems =
+        hotbar == null ? List.of() : ItemAggregator.stacks(hotbar.getInventory(), names);
 
     boolean changed = storageView.update(commands, events, stored);
     changed |= inventoryView.update(commands, events, carried);
-    changed |= updateSelection(commands, events, stored, carried);
+    changed |= hotbarView.update(commands, events, hotbarItems);
+    changed |= updateSelection(commands, events, stored, carried, hotbarItems);
 
     final String info = describe(containers.size(), all, stored);
     if (!info.equals(shownInfo)) {
@@ -257,11 +284,25 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull UICommandBuilder commands,
       @Nonnull UIEventBuilder events,
       @Nonnull List<StoredItem> stored,
-      @Nonnull List<StoredItem> carried) {
+      @Nonnull List<StoredItem> carried,
+      @Nonnull List<StoredItem> hotbarItems) {
     if (selection != null) {
       final ItemStack prototype = selection.prototype();
-      final List<StoredItem> source = selection.storage() ? stored : carried;
-      if (source.stream().noneMatch(item -> item.prototype().equals(prototype))) {
+      final InventorySlot slot = selection.slot();
+      final boolean present;
+      if (selection.storage()) {
+        present = stored.stream().anyMatch(item -> item.prototype().equals(prototype));
+      } else if (slot != null) {
+        final List<StoredItem> section = slot.hotbar() ? hotbarItems : carried;
+        present =
+            slot.index() < section.size()
+                && section.get(slot.index()).prototype().equals(prototype);
+      } else {
+        present =
+            carried.stream().anyMatch(item -> item.prototype().equals(prototype))
+                || hotbarItems.stream().anyMatch(item -> item.prototype().equals(prototype));
+      }
+      if (!present) {
         status = unavailableItem(selection.storage());
         selection = null;
       }
@@ -277,13 +318,16 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
         "#SelectionDirection.Text",
         selection.storage() ? "Take from storage" : "Store in nearby containers");
     final String key = String.valueOf(keys.idOf(selection.prototype()));
-    bindSelection(events, "#SelectionOne", selection.storage() ? TAKE_ONE : DEPOSIT_ONE, key);
+    final String slot = selection.slot() == null ? null : selection.slot().encode();
+    bindSelection(events, "#SelectionOne", selection.storage() ? TAKE_ONE : DEPOSIT_ONE, key, slot);
     bindSelection(
         events,
         "#SelectionHalfStack",
         selection.storage() ? TAKE_HALF_STACK : DEPOSIT_HALF_STACK,
-        key);
-    bindSelection(events, "#SelectionStack", selection.storage() ? TAKE_STACK : DEPOSIT_STACK, key);
+        key,
+        slot);
+    bindSelection(
+        events, "#SelectionStack", selection.storage() ? TAKE_STACK : DEPOSIT_STACK, key, slot);
     return true;
   }
 
@@ -291,12 +335,11 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull UIEventBuilder events,
       @Nonnull String selector,
       @Nonnull String action,
-      @Nonnull String key) {
-    events.addEventBinding(
-        CustomUIEventBindingType.Activating,
-        selector,
-        EventData.of(PageEvent.ACTION, action).append(PageEvent.KEY, key),
-        false);
+      @Nonnull String key,
+      @Nullable String slot) {
+    EventData data = EventData.of(PageEvent.ACTION, action).append(PageEvent.KEY, key);
+    if (slot != null) data = data.append(PageEvent.SLOT, slot);
+    events.addEventBinding(CustomUIEventBindingType.Activating, selector, data, false);
   }
 
   @Nonnull
@@ -327,22 +370,24 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Ref<EntityStore> ref,
       @Nonnull Store<EntityStore> store,
       @Nonnull String action,
-      @Nullable String key) {
+      @Nullable String key,
+      @Nullable String slotText) {
     selection = null;
+    final InventorySlot slot = InventorySlot.parse(slotText);
     return switch (action) {
       case SELECT_STORAGE, SELECT_INVENTORY -> {
         final boolean storage = SELECT_STORAGE.equals(action);
         final ItemStack prototype = prototypeOf(key);
         if (prototype == null) yield unavailableItem(storage);
 
-        selection = new ItemSelection(prototype, storage);
+        selection = new ItemSelection(prototype, storage, storage ? null : slot);
         yield status;
       }
       case CLOSE_SELECTION -> status;
       case QUICK_STACK -> quickStack(ref, store);
       case TAKE_STACK, TAKE_HALF_STACK, TAKE_ONE -> take(ref, store, prototypeOf(key), action);
       case DEPOSIT_ALL, DEPOSIT_STACK, DEPOSIT_HALF_STACK, DEPOSIT_ONE ->
-          deposit(ref, store, prototypeOf(key), action);
+          deposit(ref, store, prototypeOf(key), slot, action);
       default -> {
         LOGGER.atFine().log("Ignoring an unknown portal action");
         yield status;
@@ -376,22 +421,52 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Ref<EntityStore> ref,
       @Nonnull Store<EntityStore> store,
       @Nullable ItemStack prototype,
+      @Nullable InventorySlot slot,
       @Nonnull String action) {
     if (prototype == null) return "That item is no longer in your inventory";
 
     final List<ItemContainer> containers = containers();
     if (containers.isEmpty()) return "No containers in range";
 
+    final int wanted = transferAmount(action, prototype.getItem().getMaxStack());
+    if (slot != null) return depositSlot(ref, store, prototype, slot, wanted, containers);
+
     final CombinedItemContainer inventory =
         InventoryComponent.getCombined(store, ref, InventoryComponent.STORAGE_FIRST);
 
-    final int wanted = transferAmount(action, prototype.getItem().getMaxStack());
     final int moved = ItemTransfers.deposit(inventory, prototype, wanted, containers);
     if (moved > 0) return "Stored " + moved + "x " + names.of(prototype);
 
     return ItemTransfers.count(List.of(inventory), prototype) > 0
         ? "No room in nearby containers"
         : "That item is no longer in your inventory";
+  }
+
+  /** Stores items from the one inventory slot the player clicked, never from other stacks. */
+  @Nonnull
+  private String depositSlot(
+      @Nonnull Ref<EntityStore> ref,
+      @Nonnull Store<EntityStore> store,
+      @Nonnull ItemStack prototype,
+      @Nonnull InventorySlot slot,
+      int wanted,
+      @Nonnull List<ItemContainer> containers) {
+    final InventoryComponent section =
+        slot.hotbar()
+            ? store.getComponent(ref, InventoryComponent.Hotbar.getComponentType())
+            : store.getComponent(ref, InventoryComponent.Storage.getComponentType());
+    if (section == null) return "That stack is no longer in your inventory";
+
+    final ItemContainer inventory = section.getInventory();
+    final int moved =
+        ItemTransfers.depositSlot(inventory, slot.index(), prototype, wanted, containers);
+    if (moved > 0) return "Stored " + moved + "x " + names.of(prototype);
+
+    final ItemStack current =
+        slot.index() < inventory.getCapacity() ? inventory.getItemStack(slot.index()) : null;
+    return !ItemStack.isEmpty(current) && current.isStackableWith(prototype)
+        ? "No room in nearby containers"
+        : "That stack is no longer in your inventory";
   }
 
   private static int transferAmount(@Nonnull String action, int maxStack) {
@@ -454,13 +529,50 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     return portalKey.equals(PortalBlock.keyAt(world, pos.x, pos.y, pos.z));
   }
 
-  private record ItemSelection(@Nonnull ItemStack prototype, boolean storage) {}
+  private record ItemSelection(
+      @Nonnull ItemStack prototype, boolean storage, @Nullable InventorySlot slot) {}
+
+  /** One slot of the player's inventory storage or hotbar, as named by a client event. */
+  private record InventorySlot(boolean hotbar, short index) {
+
+    @Nullable
+    static InventorySlot parse(@Nullable String text) {
+      if (text == null) return null;
+
+      final int colon = text.indexOf(':');
+      if (colon < 0) return null;
+
+      final String section = text.substring(0, colon);
+      final boolean hotbar;
+      if (HOTBAR_SECTION.equals(section)) {
+        hotbar = true;
+      } else if (STORAGE_SECTION.equals(section)) {
+        hotbar = false;
+      } else {
+        return null;
+      }
+      try {
+        final int index = Integer.parseInt(text.substring(colon + 1));
+        if (index < 0 || index > Short.MAX_VALUE) return null;
+        return new InventorySlot(hotbar, (short) index);
+      } catch (NumberFormatException e) {
+        LOGGER.atFine().log("Ignoring a malformed inventory slot");
+        return null;
+      }
+    }
+
+    @Nonnull
+    String encode() {
+      return (hotbar ? HOTBAR_SECTION : STORAGE_SECTION) + ":" + index;
+    }
+  }
 
   /** What a client event can carry: an action on an item, or a new search text. */
   public static final class PageEvent {
 
     public static final String ACTION = "Action";
     public static final String KEY = "Key";
+    public static final String SLOT = "Slot";
     public static final String SEARCH = "@SearchQuery";
 
     public static final BuilderCodec<PageEvent> CODEC =
@@ -476,6 +588,11 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
                 event -> event.key)
             .add()
             .append(
+                new KeyedCodec<>(SLOT, Codec.STRING),
+                (event, value) -> event.slot = value,
+                event -> event.slot)
+            .add()
+            .append(
                 new KeyedCodec<>(SEARCH, Codec.STRING),
                 (event, value) -> event.search = value,
                 event -> event.search)
@@ -484,6 +601,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
 
     private String action;
     private String key;
+    private String slot;
     private String search;
   }
 }
