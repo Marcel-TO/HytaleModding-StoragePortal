@@ -17,6 +17,7 @@ import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.inventory.container.CombinedItemContainer;
 import com.hypixel.hytale.server.core.inventory.container.ItemContainer;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
+import com.hypixel.hytale.server.core.ui.Value;
 import com.hypixel.hytale.server.core.ui.builder.EventData;
 import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
 import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
@@ -31,6 +32,7 @@ import java.util.UUID;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import net.marcelto.hytale.storage.ItemAggregator;
+import net.marcelto.hytale.storage.ItemCategory;
 import net.marcelto.hytale.storage.ItemNames;
 import net.marcelto.hytale.storage.ItemTransfers;
 import net.marcelto.hytale.storage.NearbyContainers;
@@ -98,6 +100,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private final ItemGridView hotbarView;
 
   private String search = "";
+  private ItemCategory category = ItemCategory.ALL;
+  private ItemCategory shownCategory;
   private String status = HINT;
   private String shownInfo;
   private String shownStatus;
@@ -160,6 +164,14 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Store<EntityStore> store) {
     commands.append(PAGE);
 
+    for (final ItemCategory tab : ItemCategory.values()) {
+      final String selector = "#Category" + tab.label();
+      events.addEventBinding(
+          CustomUIEventBindingType.Activating,
+          selector,
+          EventData.of(PageEvent.CATEGORY, tab.name()),
+          false);
+    }
     events.addEventBinding(
         CustomUIEventBindingType.ValueChanged,
         "#SearchInput",
@@ -182,6 +194,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
         false);
 
     search = "";
+    category = ItemCategory.ALL;
+    shownCategory = null;
     shownInfo = null;
     shownStatus = null;
     selection = null;
@@ -236,6 +250,15 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       search = data.search.trim().toLowerCase(Locale.ROOT);
       selection = null;
     }
+    if (data.category != null) {
+      final ItemCategory requested = ItemCategory.fromId(data.category);
+      if (requested == null) {
+        LOGGER.atFine().log("Ignoring an unknown storage category");
+      } else if (requested != category) {
+        category = requested;
+        selection = null;
+      }
+    }
     if (HIGHLIGHT.equals(data.action)) {
       if (highlight(ref, store, data.key, data.slot)) return;
     } else if (data.action != null) {
@@ -264,7 +287,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull UIEventBuilder events) {
     final List<ItemContainer> containers = containers();
     final List<StoredItem> all = ItemAggregator.aggregate(containers, names);
-    final List<StoredItem> stored = ItemAggregator.filter(all, search);
+    final List<StoredItem> stored = ItemAggregator.filter(all, search, category);
     final InventoryComponent.Storage inventory =
         accessor.getComponent(ref, InventoryComponent.Storage.getComponentType());
     final InventoryComponent.Hotbar hotbar =
@@ -279,6 +302,11 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     changed |= hotbarView.update(commands, events, hotbarItems);
     changed |= updateSelection(commands, events, stored, carried, hotbarItems);
 
+    if (category != shownCategory) {
+      updateCategoryTabs(commands, category);
+      shownCategory = category;
+      changed = true;
+    }
     final String info = describe(containers.size(), all, stored);
     if (!info.equals(shownInfo)) {
       shownInfo = info;
@@ -291,6 +319,32 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       changed = true;
     }
     return changed;
+  }
+
+  private static void updateCategoryTabs(
+      @Nonnull UICommandBuilder commands, @Nonnull ItemCategory selected) {
+    for (final ItemCategory tab : ItemCategory.values()) {
+      final String selector = "#Category" + tab.label();
+      final boolean active = tab == selected;
+      commands.set(
+          selector + ".Style",
+          Value.ref(PAGE, active ? "SelectedCategoryTabStyle" : "CategoryTabStyle"));
+      commands.set(selector + " #CategoryIcon.AssetPath", categoryIcon(tab, active));
+    }
+  }
+
+  @Nonnull
+  private static String categoryIcon(@Nonnull ItemCategory category, boolean selected) {
+    return "Icons/ItemCategories/"
+        + switch (category) {
+          case ALL -> selected ? "ItemsActive.png" : "Items.png";
+          case BLOCKS -> selected ? "NaturalActive.png" : "Natural.png";
+          case WEAPONS -> "Items-Weapons.png";
+          case TOOLS -> "Items-Tools.png";
+          case ARMOR -> "Items-Armor.png";
+          case FOOD -> "Items-Food.png";
+          case MATERIALS -> "Items-Ingredients.png";
+        };
   }
 
   private boolean updateSelection(
@@ -360,7 +414,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private static String describe(
       int containerCount, @Nonnull List<StoredItem> all, @Nonnull List<StoredItem> shown) {
     if (containerCount == 0) return "No containers in range";
-    if (shown.isEmpty() && !all.isEmpty()) return "No items match your search";
+    if (shown.isEmpty() && !all.isEmpty()) return "No items match your filters";
 
     long items = 0;
     for (final StoredItem item : all) {
@@ -693,13 +747,14 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     }
   }
 
-  /** What a client event can carry: an action on an item, or a new search text. */
+  /** What a client event can carry: an item action, search text, or category id. */
   public static final class PageEvent {
 
     public static final String ACTION = "Action";
     public static final String KEY = "Key";
     public static final String SLOT = "Slot";
     public static final String SEARCH = "@SearchQuery";
+    public static final String CATEGORY = "Category";
 
     public static final BuilderCodec<PageEvent> CODEC =
         BuilderCodec.builder(PageEvent.class, PageEvent::new)
@@ -723,11 +778,17 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
                 (event, value) -> event.search = value,
                 event -> event.search)
             .add()
+            .append(
+                new KeyedCodec<>(CATEGORY, Codec.STRING),
+                (event, value) -> event.category = value,
+                event -> event.category)
+            .add()
             .build();
 
     private String action;
     private String key;
     private String slot;
     private String search;
+    private String category;
   }
 }
