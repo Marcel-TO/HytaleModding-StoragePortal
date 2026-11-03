@@ -1,5 +1,37 @@
 $C = "../Common.ui";
 
+@CategoryTabStyle = ButtonStyle(
+  Default: (Background: #19252F),
+  Hovered: (Background: #2b3b49),
+  Pressed: (Background: #354958),
+  Sounds: $C.@ButtonSounds,
+);
+
+@SelectedCategoryTabStyle = ButtonStyle(
+  Default: (Background: #435366),
+  Hovered: (Background: #4e6075),
+  Pressed: (Background: #354958),
+  Sounds: $C.@ButtonSounds,
+);
+
+@CategoryTab = Button {
+  FlexWeight: 1;
+  Anchor: (Height: 34);
+  LayoutMode: Full;
+  Style: @CategoryTabStyle;
+
+  Group {
+    Anchor: (Full: 0);
+    LayoutMode: CenterMiddle;
+    HitTestVisible: false;
+
+    AssetImage #CategoryIcon {
+      Anchor: (Width: 24, Height: 24);
+      FallbackTexturePath: "UI/Custom/Pages/Memories/MissingIcon.png";
+    }
+  }
+};
+
 // Only the two panels have backgrounds; the world remains visible between them.
 Group #PortalDisplays {
   Anchor: (Full: 0);
@@ -99,6 +131,34 @@ Group #PortalDisplays {
           $C.@SecondaryTextButton #QuickStackButton {
             @Anchor = (Width: 190);
             Text: "Quick stack";
+          }
+        }
+
+        Group #CategoryTabs {
+          Anchor: (Height: 42);
+          LayoutMode: Left;
+          Padding: (Top: 4, Bottom: 4, Left: 8, Right: 8);
+
+          @CategoryTab #CategoryAll {
+            TooltipText: "All";
+          }
+          @CategoryTab #CategoryBlocks {
+            TooltipText: "Blocks";
+          }
+          @CategoryTab #CategoryWeapons {
+            TooltipText: "Weapons";
+          }
+          @CategoryTab #CategoryTools {
+            TooltipText: "Tools";
+          }
+          @CategoryTab #CategoryArmor {
+            TooltipText: "Armor";
+          }
+          @CategoryTab #CategoryFood {
+            TooltipText: "Food";
+          }
+          @CategoryTab #CategoryMaterials {
+            TooltipText: "Materials";
           }
         }
 

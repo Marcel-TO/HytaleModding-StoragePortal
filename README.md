@@ -19,13 +19,14 @@ The item has the ID `Storage_Portal` and **no crafting recipe**. Get it from the
 Press **F** on the block, the same interact key a chest uses, to open the window.
 
 The window has two separate panels with a transparent gap between them. Your inventory and hotbar
-are on the left. Nearby storage, search, quick stack, and transfer messages are on the right.
+are on the left. Nearby storage, category tabs, search, quick stack, and transfer messages are on the right.
 The world remains visible outside the panels.
 
 | Part | What it does |
 | --- | --- |
 | Storage grid (right panel) | Every item of the nearby containers, summed per item type. Hover an item to see its name and total. |
-| Search box | Filters the storage grid by item name. |
+| Category tabs | Filters nearby storage by All, Blocks, Weapons, Tools, Armor, Food, or Materials. Hover over a creative inventory icon to see its category. The selected tab is highlighted. |
+| Search box | Filters the selected storage category by item name or ID. Multiple words must all match. |
 | Click an item (storage grid) | Takes one stack into your inventory. |
 | Right-click an item (storage grid) | Opens a menu to take one item, half a stack, or one stack. |
 | Inventory grid | Every inventory storage slot in its original position, including empty slots, arranged in nine columns like the normal inventory. Each occupied slot shows its own stack quantity. |
@@ -33,6 +34,12 @@ The world remains visible outside the panels.
 | Click an item (inventory or hotbar) | Stores that slot's stack in nearby containers, preferring containers that already hold the item. Other stacks of the same item stay in your inventory. |
 | Right-click an item (inventory or hotbar) | Opens a menu to store one item, half a stack, or one stack from that slot. Empty slots have no click actions. |
 | Quick stack | Moves every item of your inventory storage (not the hotbar) that a nearby container already holds into that container. |
+
+Categories use the loaded item's `Type` tags, including inherited tags, and its asset categories.
+Materials includes items tagged `Ingredient`. Blocks includes placeable blocks and furniture.
+An item can match more than one category, and **All** always includes items without category metadata.
+Switching tabs keeps your search text and dismisses the item menu. The filters do not change your
+inventory, hotbar, or which items Quick stack can deposit.
 
 Choose **Highlight** from an item's right-click menu in the storage, inventory, or hotbar grid to
 close the portal and show a gold particle outline around each nearby container holding that item for

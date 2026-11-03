@@ -63,11 +63,19 @@ public final class ItemAggregator {
   /** Keeps the items whose name or id contains every whitespace-separated word of the query. */
   @Nonnull
   public static List<StoredItem> filter(@Nonnull List<StoredItem> items, @Nonnull String query) {
-    if (query.isEmpty()) return items;
+    return filter(items, query, ItemCategory.ALL);
+  }
+
+  /** Combines the selected category with the name/id search without changing item quantities. */
+  @Nonnull
+  public static List<StoredItem> filter(
+      @Nonnull List<StoredItem> items, @Nonnull String query, @Nonnull ItemCategory category) {
+    if (query.isEmpty() && category == ItemCategory.ALL) return items;
 
     final String[] words = query.split("\\s+");
     final List<StoredItem> matches = new ArrayList<>();
     for (final StoredItem item : items) {
+      if (category != ItemCategory.ALL && !category.matches(item.prototype().getItem())) continue;
       final String haystack =
           (item.name() + ' ' + item.prototype().getItemId().replace('_', ' '))
               .toLowerCase(Locale.ROOT);
