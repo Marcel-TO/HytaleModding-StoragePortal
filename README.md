@@ -34,7 +34,21 @@ The world remains visible outside the panels.
 | Right-click an item (inventory or hotbar) | Opens a menu to store one item, half a stack, or one stack from that slot. Empty slots have no click actions. |
 | Quick stack | Moves every item of your inventory storage (not the hotbar) that a nearby container already holds into that container. |
 
-The right-click menu also shows **Highlight** as a disabled placeholder. Half a stack means half the item's maximum stack size, rounded down, with a minimum of one item. Transfers stop at the amount available or the destination's free space. Choose Cancel or click outside the menu to dismiss it without closing the portal.
+Choose **Highlight** from an item's right-click menu in the storage, inventory, or hotbar grid to
+close the portal and show a gold particle outline around each nearby container holding that item for
+10 seconds. Only the player who clicked sees the outlines. Matching uses the same item variant,
+container range, and limit as transfers. If no nearby container holds the item, the window stays
+open with a message.
+
+Double chests get one rectangular outline around both block cells, aligned with the chest's
+orientation, and still count as one container. Other containers are marked per block cell in their
+rotated footprint. The outline does not trace the exact model shape and is not guaranteed to be
+visible through walls. Particles expire on the client without a server timer or per-frame updates.
+Container contents are checked when you click; outlines do not follow later item transfers.
+
+Half a stack means half the item's maximum stack size, rounded down, with a minimum of one item.
+Transfers stop at the amount available or the destination's free space. Choose Cancel or click
+outside the menu to dismiss it without closing the portal.
 
 The window closes when you walk more than 8 blocks away from the portal, change world, or the block is removed. The glyph's lid stays open while anyone has the window open and closes when the last viewer leaves. Idle motion resumes after each lid animation, with the lid held in the appropriate pose.
 

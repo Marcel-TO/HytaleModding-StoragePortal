@@ -9,6 +9,8 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.logger.HytaleLogger;
 import com.hypixel.hytale.protocol.packets.interface_.CustomPageLifetime;
 import com.hypixel.hytale.protocol.packets.interface_.CustomUIEventBindingType;
+import com.hypixel.hytale.server.core.Message;
+import com.hypixel.hytale.server.core.asset.type.particle.config.ParticleSystem;
 import com.hypixel.hytale.server.core.entity.entities.player.pages.InteractiveCustomUIPage;
 import com.hypixel.hytale.server.core.inventory.InventoryComponent;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
@@ -19,6 +21,7 @@ import com.hypixel.hytale.server.core.ui.builder.EventData;
 import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
 import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.server.core.universe.world.ParticleUtil;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import java.util.List;
@@ -70,6 +73,12 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private static final String SELECT_STORAGE = "SelectStorage";
   private static final String SELECT_INVENTORY = "SelectInventory";
   private static final String CLOSE_SELECTION = "CloseSelection";
+  private static final String HIGHLIGHT = "Highlight";
+
+  private static final String HIGHLIGHT_PARTICLES = "StoragePortal_Container_Highlight";
+  private static final String HIGHLIGHT_DOUBLE_X = "StoragePortal_Container_Highlight_Double_X";
+  private static final String HIGHLIGHT_DOUBLE_Z = "StoragePortal_Container_Highlight_Double_Z";
+  private static final float HIGHLIGHT_SECONDS = 10.0f;
 
   private static final String STORAGE_SECTION = "storage";
   private static final String HOTBAR_SECTION = "hotbar";
@@ -227,7 +236,11 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       search = data.search.trim().toLowerCase(Locale.ROOT);
       selection = null;
     }
-    if (data.action != null) status = perform(ref, store, data.action, data.key, data.slot);
+    if (HIGHLIGHT.equals(data.action)) {
+      if (highlight(ref, store, data.key, data.slot)) return;
+    } else if (data.action != null) {
+      status = perform(ref, store, data.action, data.key, data.slot);
+    }
 
     refresh(ref, store);
   }
@@ -328,6 +341,7 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
         slot);
     bindSelection(
         events, "#SelectionStack", selection.storage() ? TAKE_STACK : DEPOSIT_STACK, key, slot);
+    bindSelection(events, "#SelectionHighlight", HIGHLIGHT, key, slot);
     return true;
   }
 
@@ -395,6 +409,99 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     };
   }
 
+  private boolean highlight(
+      @Nonnull Ref<EntityStore> ref,
+      @Nonnull Store<EntityStore> store,
+      @Nullable String key,
+      @Nullable String slotText) {
+    final ItemSelection selected = selection;
+    selection = null;
+    if (selected == null || !selected.matches(prototypeOf(key), slotText)) {
+      status = "That item is no longer available";
+      return false;
+    }
+
+    final ItemStack prototype = selected.prototype();
+    if (!selected.storage()) {
+      final InventorySlot slot = selected.slot();
+      final ItemContainer inventory = slot == null ? null : inventorySection(ref, store, slot);
+      if (slot == null || inventory == null || !slotContains(inventory, slot.index(), prototype)) {
+        status = unavailableItem(false);
+        return false;
+      }
+    }
+
+    final List<NearbyContainers.ContainerBounds> bounds;
+    try {
+      bounds =
+          NearbyContainers.findMatchingBounds(
+              world, new Vector3d(pos.x, pos.y, pos.z), radius, maxContainers, prototype);
+    } catch (NearbyContainers.UnavailableContainerException e) {
+      LOGGER.atWarning().withCause(e).log("Cannot locate a container for highlighting");
+      status = "Highlight is unavailable: cannot locate a matching container";
+      return false;
+    }
+    if (bounds.isEmpty()) {
+      status = "No nearby containers hold that item";
+      return false;
+    }
+    for (final NearbyContainers.ContainerBounds container : bounds) {
+      final String particles = highlightParticles(container);
+      if (ParticleSystem.getAssetMap().getAsset(particles) == null) {
+        LOGGER.atWarning().log("Missing storage container highlight particle asset %s", particles);
+        status = "Highlight is unavailable: missing particle asset";
+        return false;
+      }
+    }
+
+    final List<Ref<EntityStore>> viewers = List.of(ref);
+    for (final NearbyContainers.ContainerBounds container : bounds) {
+      final String particles = highlightParticles(container);
+      if (HIGHLIGHT_PARTICLES.equals(particles)) {
+        container.forEachBlock(
+            (x, y, z) -> spawnHighlight(particles, x + 0.5, y + 0.5, z + 0.5, viewers, store));
+      } else {
+        spawnHighlight(
+            particles,
+            container.centerX(),
+            container.centerY(),
+            container.centerZ(),
+            viewers,
+            store);
+      }
+    }
+    playerRef.sendMessage(
+        Message.raw(
+            "Highlighted "
+                + bounds.size()
+                + (bounds.size() == 1 ? " container" : " containers")
+                + " holding "
+                + names.of(prototype)
+                + " for 10 seconds"));
+    close();
+    return true;
+  }
+
+  @Nonnull
+  private static String highlightParticles(@Nonnull NearbyContainers.ContainerBounds bounds) {
+    if (bounds.height() == 1) {
+      if (bounds.width() == 2 && bounds.depth() == 1) return HIGHLIGHT_DOUBLE_X;
+      if (bounds.width() == 1 && bounds.depth() == 2) return HIGHLIGHT_DOUBLE_Z;
+    }
+    return HIGHLIGHT_PARTICLES;
+  }
+
+  private static void spawnHighlight(
+      @Nonnull String particles,
+      double x,
+      double y,
+      double z,
+      @Nonnull List<Ref<EntityStore>> viewers,
+      @Nonnull Store<EntityStore> store) {
+    ParticleUtil.spawnParticleEffect(
+        particles, x, y, z, 0, 0, 0, 1, null, null, viewers, store, HIGHLIGHT_SECONDS);
+  }
+
   @Nonnull
   private String take(
       @Nonnull Ref<EntityStore> ref,
@@ -451,22 +558,35 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull InventorySlot slot,
       int wanted,
       @Nonnull List<ItemContainer> containers) {
-    final InventoryComponent section =
-        slot.hotbar()
-            ? store.getComponent(ref, InventoryComponent.Hotbar.getComponentType())
-            : store.getComponent(ref, InventoryComponent.Storage.getComponentType());
-    if (section == null) return "That stack is no longer in your inventory";
-
-    final ItemContainer inventory = section.getInventory();
+    final ItemContainer inventory = inventorySection(ref, store, slot);
+    if (inventory == null) return "That stack is no longer in your inventory";
     final int moved =
         ItemTransfers.depositSlot(inventory, slot.index(), prototype, wanted, containers);
     if (moved > 0) return "Stored " + moved + "x " + names.of(prototype);
 
-    final ItemStack current =
-        slot.index() < inventory.getCapacity() ? inventory.getItemStack(slot.index()) : null;
-    return !ItemStack.isEmpty(current) && current.isStackableWith(prototype)
+    return slotContains(inventory, slot.index(), prototype)
         ? "No room in nearby containers"
         : "That stack is no longer in your inventory";
+  }
+
+  @Nullable
+  private static ItemContainer inventorySection(
+      @Nonnull Ref<EntityStore> ref,
+      @Nonnull Store<EntityStore> store,
+      @Nonnull InventorySlot slot) {
+    final InventoryComponent section =
+        slot.hotbar()
+            ? store.getComponent(ref, InventoryComponent.Hotbar.getComponentType())
+            : store.getComponent(ref, InventoryComponent.Storage.getComponentType());
+    return section == null ? null : section.getInventory();
+  }
+
+  private static boolean slotContains(
+      @Nonnull ItemContainer inventory, short slot, @Nonnull ItemStack prototype) {
+    if (slot < 0 || slot >= inventory.getCapacity()) return false;
+
+    final ItemStack current = inventory.getItemStack(slot);
+    return !ItemStack.isEmpty(current) && current.isStackableWith(prototype);
   }
 
   private static int transferAmount(@Nonnull String action, int maxStack) {
@@ -530,7 +650,13 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   }
 
   private record ItemSelection(
-      @Nonnull ItemStack prototype, boolean storage, @Nullable InventorySlot slot) {}
+      @Nonnull ItemStack prototype, boolean storage, @Nullable InventorySlot slot) {
+
+    private boolean matches(@Nullable ItemStack eventPrototype, @Nullable String eventSlot) {
+      return prototype.equals(eventPrototype)
+          && Objects.equals(slot == null ? null : slot.encode(), eventSlot);
+    }
+  }
 
   /** One slot of the player's inventory storage or hotbar, as named by a client event. */
   private record InventorySlot(boolean hotbar, short index) {
