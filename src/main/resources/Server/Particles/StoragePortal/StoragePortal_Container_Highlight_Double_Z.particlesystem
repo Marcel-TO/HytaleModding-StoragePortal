@@ -1,0 +1,144 @@
+{
+  "LifeSpan": 10,
+  "Spawners": [
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -0.5,
+        "Y": -0.52,
+        "X": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 0.5,
+        "Y": -0.52,
+        "X": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -0.5,
+        "Y": -0.52,
+        "X": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 0.5,
+        "Y": -0.52,
+        "X": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -0.5,
+        "Y": 0.52,
+        "X": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 0.5,
+        "Y": 0.52,
+        "X": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -0.5,
+        "Y": 0.52,
+        "X": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Z",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 0.5,
+        "Y": 0.52,
+        "X": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Y",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -1.02,
+        "X": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Y",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -1.02,
+        "X": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Y",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 1.02,
+        "X": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_Y",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 1.02,
+        "X": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_X",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -1.02,
+        "Y": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_X",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": -1.02,
+        "Y": 0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_X",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 1.02,
+        "Y": -0.52
+      }
+    },
+    {
+      "SpawnerId": "StoragePortal_Highlight_X",
+      "FixedRotation": true,
+      "PositionOffset": {
+        "Z": 1.02,
+        "Y": 0.52
+      }
+    }
+  ],
+  "BoundingRadius": 2,
+  "CullDistance": 64,
+  "IsImportant": true
+}

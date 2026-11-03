@@ -198,8 +198,7 @@ Group #ItemSelectionOverlay {
       $C.@SecondaryTextButton #SelectionHighlight {
         @Anchor = (Height: 40);
         Text: "Highlight";
-        Disabled: true;
-        TooltipText: "Not implemented yet";
+        TooltipText: "Close the portal and outline containers holding this item for 10 seconds";
       }
 
       $C.@SecondaryTextButton #SelectionCloseButton {
