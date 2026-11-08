@@ -67,7 +67,9 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
   private static final String TAKE_STACK = "TakeStack";
   private static final String TAKE_HALF_STACK = "TakeHalfStack";
   private static final String TAKE_ONE = "TakeOne";
+  private static final String TAKE_ALL_BUT_ONE = "TakeAllButOne";
   private static final String DEPOSIT_ALL = "DepositAll";
+  private static final String DEPOSIT_ALL_BUT_ONE = "DepositAllButOne";
   private static final String DEPOSIT_STACK = "DepositStack";
   private static final String DEPOSIT_HALF_STACK = "DepositHalfStack";
   private static final String DEPOSIT_ONE = "DepositOne";
@@ -395,6 +397,12 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
         slot);
     bindSelection(
         events, "#SelectionStack", selection.storage() ? TAKE_STACK : DEPOSIT_STACK, key, slot);
+    bindSelection(
+        events,
+        "#SelectionAllButOne",
+        selection.storage() ? TAKE_ALL_BUT_ONE : DEPOSIT_ALL_BUT_ONE,
+        key,
+        slot);
     bindSelection(events, "#SelectionHighlight", HIGHLIGHT, key, slot);
     return true;
   }
@@ -453,8 +461,9 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       }
       case CLOSE_SELECTION -> status;
       case QUICK_STACK -> quickStack(ref, store);
-      case TAKE_STACK, TAKE_HALF_STACK, TAKE_ONE -> take(ref, store, prototypeOf(key), action);
-      case DEPOSIT_ALL, DEPOSIT_STACK, DEPOSIT_HALF_STACK, DEPOSIT_ONE ->
+      case TAKE_STACK, TAKE_HALF_STACK, TAKE_ONE, TAKE_ALL_BUT_ONE ->
+          take(ref, store, prototypeOf(key), action);
+      case DEPOSIT_ALL, DEPOSIT_STACK, DEPOSIT_HALF_STACK, DEPOSIT_ONE, DEPOSIT_ALL_BUT_ONE ->
           deposit(ref, store, prototypeOf(key), slot, action);
       default -> {
         LOGGER.atFine().log("Ignoring an unknown portal action");
@@ -565,7 +574,15 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     if (prototype == null) return "That item is no longer available";
 
     final List<ItemContainer> containers = containers();
-    final int wanted = transferAmount(action, prototype.getItem().getMaxStack());
+    final int wanted;
+    if (TAKE_ALL_BUT_ONE.equals(action)) {
+      final long stored = ItemTransfers.count(containers, prototype);
+      if (stored == 0) return "That item is no longer available";
+      if (stored == 1) return "Only one " + names.of(prototype) + " is stored";
+      wanted = allButOne(stored);
+    } else {
+      wanted = transferAmount(action, prototype.getItem().getMaxStack());
+    }
     final CombinedItemContainer inventory =
         InventoryComponent.getCombined(store, ref, InventoryComponent.HOTBAR_FIRST);
 
@@ -589,11 +606,19 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
     final List<ItemContainer> containers = containers();
     if (containers.isEmpty()) return "No containers in range";
 
-    final int wanted = transferAmount(action, prototype.getItem().getMaxStack());
-    if (slot != null) return depositSlot(ref, store, prototype, slot, wanted, containers);
+    if (slot != null) return depositSlot(ref, store, prototype, slot, action, containers);
 
     final CombinedItemContainer inventory =
         InventoryComponent.getCombined(store, ref, InventoryComponent.STORAGE_FIRST);
+    final int wanted;
+    if (DEPOSIT_ALL_BUT_ONE.equals(action)) {
+      final long carried = ItemTransfers.count(List.of(inventory), prototype);
+      if (carried == 0) return "That item is no longer in your inventory";
+      if (carried == 1) return "You only carry one " + names.of(prototype);
+      wanted = allButOne(carried);
+    } else {
+      wanted = transferAmount(action, prototype.getItem().getMaxStack());
+    }
 
     final int moved = ItemTransfers.deposit(inventory, prototype, wanted, containers);
     if (moved > 0) return "Stored " + moved + "x " + names.of(prototype);
@@ -610,10 +635,21 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       @Nonnull Store<EntityStore> store,
       @Nonnull ItemStack prototype,
       @Nonnull InventorySlot slot,
-      int wanted,
+      @Nonnull String action,
       @Nonnull List<ItemContainer> containers) {
     final ItemContainer inventory = inventorySection(ref, store, slot);
     if (inventory == null) return "That stack is no longer in your inventory";
+    final int wanted;
+    if (DEPOSIT_ALL_BUT_ONE.equals(action)) {
+      if (!slotContains(inventory, slot.index(), prototype)) {
+        return "That stack is no longer in your inventory";
+      }
+      final int quantity = inventory.getItemStack(slot.index()).getQuantity();
+      if (quantity <= 1) return "That stack only holds one " + names.of(prototype);
+      wanted = quantity - 1;
+    } else {
+      wanted = transferAmount(action, prototype.getItem().getMaxStack());
+    }
     final int moved =
         ItemTransfers.depositSlot(inventory, slot.index(), prototype, wanted, containers);
     if (moved > 0) return "Stored " + moved + "x " + names.of(prototype);
@@ -651,6 +687,10 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
       case DEPOSIT_ALL -> Integer.MAX_VALUE;
       default -> throw new IllegalArgumentException("Unknown transfer action: " + action);
     };
+  }
+
+  private static int allButOne(long count) {
+    return (int) Math.min(Integer.MAX_VALUE, Math.max(0, count - 1));
   }
 
   @Nonnull

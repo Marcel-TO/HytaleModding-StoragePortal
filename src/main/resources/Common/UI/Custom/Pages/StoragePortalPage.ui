@@ -212,7 +212,7 @@ Group #ItemSelectionOverlay {
     LayoutMode: CenterMiddle;
 
     Group #SelectionPanel {
-      Anchor: (Width: 320, Height: 308);
+      Anchor: (Width: 320, Height: 348);
       LayoutMode: Top;
       Background: #1a2530;
       Padding: 16;
@@ -253,6 +253,11 @@ Group #ItemSelectionOverlay {
       $C.@SecondaryTextButton #SelectionStack {
         @Anchor = (Height: 40);
         Text: "One stack";
+      }
+
+      $C.@SecondaryTextButton #SelectionAllButOne {
+        @Anchor = (Height: 40);
+        Text: "All but one";
       }
 
       $C.@SecondaryTextButton #SelectionHighlight {

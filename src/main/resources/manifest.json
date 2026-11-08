@@ -1,7 +1,7 @@
 {
     "Group": "Marcel-TO",
     "Name": "StoragePortal",
-    "Version": "1.0.2",
+    "Version": "1.0.3",
     "Description": "A Storage Portal that interacts with your entire Storage Room.",
     "Authors": [
         {

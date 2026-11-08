@@ -14,7 +14,7 @@
 
 - Combines the contents of containers within **20 blocks**, up to **64 containers**. The nearest containers are included first.
 - Search by item name or ID, or filter by category.
-- Click an item to take or store a stack. Right-click to choose one item, half a stack, or a full stack.
+- Click an item to take or store a stack. Right-click to choose one item, half a stack, a full stack, or all but one.
 - A green **+** on an inventory or hotbar item means a nearby container already holds a stackable match.
 - Use **Quick stack** to deposit only main-inventory items with a stackable match in nearby containers, leaving unmatched items and the hotbar untouched. It fills containers holding matching items first, then stores overflow in the closest containers with room. Items stay in your inventory if no container has room.
 - Use **Highlight** from an item's menu to mark nearby containers holding it for 10 seconds.
