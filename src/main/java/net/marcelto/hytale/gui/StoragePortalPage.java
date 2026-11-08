@@ -298,8 +298,8 @@ public final class StoragePortalPage extends InteractiveCustomUIPage<StoragePort
         hotbar == null ? List.of() : ItemAggregator.stacks(hotbar.getInventory(), names);
 
     boolean changed = storageView.update(commands, events, stored);
-    changed |= inventoryView.update(commands, events, carried);
-    changed |= hotbarView.update(commands, events, hotbarItems);
+    changed |= inventoryView.update(commands, events, carried, all);
+    changed |= hotbarView.update(commands, events, hotbarItems, all);
     changed |= updateSelection(commands, events, stored, carried, hotbarItems);
 
     if (category != shownCategory) {

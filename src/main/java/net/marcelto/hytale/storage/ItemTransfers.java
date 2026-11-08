@@ -90,7 +90,8 @@ public final class ItemTransfers {
   }
 
   /**
-   * Moves every item of the source that a container already holds into that container.
+   * Moves only items with a stackable match in the containers, filling the ones that already hold
+   * the same item before trying the remaining containers in their supplied nearest-first order.
    *
    * @return how many items actually moved.
    */
@@ -98,9 +99,18 @@ public final class ItemTransfers {
       @Nonnull ItemContainer source, @Nonnull List<ItemContainer> targets) {
     if (targets.isEmpty()) return 0;
 
-    final int before = countAll(source);
-    source.quickStackTo(targets.toArray(new ItemContainer[0]));
-    return before - countAll(source);
+    int moved = 0;
+    final short capacity = source.getCapacity();
+    for (short slot = 0; slot < capacity; slot++) {
+      final ItemStack stack = source.getItemStack(slot);
+      if (ItemStack.isEmpty(stack)) continue;
+      if (targets.stream().noneMatch(target -> target.containsItemStacksStackableWith(stack))) {
+        continue;
+      }
+
+      moved += depositSlot(source, slot, stack, stack.getQuantity(), targets);
+    }
+    return moved;
   }
 
   private static int moveMatching(
@@ -127,12 +137,6 @@ public final class ItemTransfers {
   private static int quantityAt(@Nonnull ItemContainer container, short slot) {
     final ItemStack stack = container.getItemStack(slot);
     return ItemStack.isEmpty(stack) ? 0 : stack.getQuantity();
-  }
-
-  private static int countAll(@Nonnull ItemContainer container) {
-    final int[] total = {0};
-    container.forEach((slot, stack) -> total[0] += stack.getQuantity());
-    return total[0];
   }
 
   @Nonnull

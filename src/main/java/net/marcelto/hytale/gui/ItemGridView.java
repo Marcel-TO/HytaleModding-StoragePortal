@@ -38,6 +38,7 @@ public final class ItemGridView {
 
   private final List<ItemStack> shownItems = new ArrayList<>();
   private final List<Long> shownTotals = new ArrayList<>();
+  private final List<Boolean> shownStorageMatches = new ArrayList<>();
 
   /**
    * Creates a view for one grid.
@@ -98,6 +99,7 @@ public final class ItemGridView {
   public void reset() {
     shownItems.clear();
     shownTotals.clear();
+    shownStorageMatches.clear();
   }
 
   /**
@@ -109,21 +111,46 @@ public final class ItemGridView {
       @Nonnull UICommandBuilder commands,
       @Nonnull UIEventBuilder events,
       @Nonnull List<StoredItem> items) {
+    return update(commands, events, items, List.of());
+  }
+
+  /**
+   * Adds the commands that bring the grid in line with its items and nearby storage matches.
+   *
+   * @param matchingItems all items currently in nearby storage, regardless of UI filters.
+   * @return true if any command was added, so the update has to be sent.
+   */
+  public boolean update(
+      @Nonnull UICommandBuilder commands,
+      @Nonnull UIEventBuilder events,
+      @Nonnull List<StoredItem> items,
+      @Nonnull List<StoredItem> matchingItems) {
     if (!sameItems(items)) {
-      rebuild(commands, events, items);
+      rebuild(commands, events, items, matchingItems);
       return true;
     }
 
     boolean changed = false;
     for (int i = 0; i < items.size(); i++) {
       final StoredItem item = items.get(i);
-      if (shownTotals.get(i) == item.total()) continue;
-
-      shownTotals.set(i, item.total());
       final String card = card(i);
-      commands.set(card + " #Qty.Text", formatQuantity(item.total()));
-      commands.set(card + " #Button.TooltipText", tooltip(item));
-      changed = true;
+      final boolean storedNearby = hasMatchingItem(item.prototype(), matchingItems);
+      boolean cardChanged = false;
+      if (shownTotals.get(i) != item.total()) {
+        shownTotals.set(i, item.total());
+        commands.set(card + " #Qty.Text", formatQuantity(item.total()));
+        changed = true;
+        cardChanged = true;
+      }
+      if (shownStorageMatches.get(i) != storedNearby) {
+        shownStorageMatches.set(i, storedNearby);
+        commands.set(card + " #StoredBadge.Visible", storedNearby);
+        changed = true;
+        cardChanged = true;
+      }
+      if (cardChanged) {
+        commands.set(card + " #Button.TooltipText", tooltip(item, storedNearby));
+      }
     }
     return changed;
   }
@@ -131,7 +158,8 @@ public final class ItemGridView {
   private void rebuild(
       @Nonnull UICommandBuilder commands,
       @Nonnull UIEventBuilder events,
-      @Nonnull List<StoredItem> items) {
+      @Nonnull List<StoredItem> items,
+      @Nonnull List<StoredItem> matchingItems) {
     commands.clear(grid);
     reset();
 
@@ -146,6 +174,8 @@ public final class ItemGridView {
       commands.setObject(card + ".Anchor", anchor);
       shownItems.add(item.prototype());
       shownTotals.add(item.total());
+      final boolean storedNearby = hasMatchingItem(item.prototype(), matchingItems);
+      shownStorageMatches.add(storedNearby);
       if (ItemStack.isEmpty(item.prototype())) {
         commands.set(card + " #Button.Disabled", true);
         commands.set(card + " #Button.TooltipText", "");
@@ -155,7 +185,8 @@ public final class ItemGridView {
       final String key = String.valueOf(keys.idOf(item.prototype()));
       commands.set(card + " #Slot.ItemId", safeItemId(item.prototype().getItemId()));
       commands.set(card + " #Qty.Text", formatQuantity(item.total()));
-      commands.set(card + " #Button.TooltipText", tooltip(item));
+      commands.set(card + " #StoredBadge.Visible", storedNearby);
+      commands.set(card + " #Button.TooltipText", tooltip(item, storedNearby));
       events.addEventBinding(
           CustomUIEventBindingType.Activating,
           card + " #Button",
@@ -202,9 +233,18 @@ public final class ItemGridView {
     return grid + "[" + index + "]";
   }
 
+  private boolean hasMatchingItem(
+      @Nonnull ItemStack prototype, @Nonnull List<StoredItem> matchingItems) {
+    if (slotSection == null || ItemStack.isEmpty(prototype)) return false;
+    for (final StoredItem stored : matchingItems) {
+      if (stored.prototype().isStackableWith(prototype)) return true;
+    }
+    return false;
+  }
+
   @Nonnull
-  private static String tooltip(@Nonnull StoredItem item) {
-    return item.name() + " x" + item.total();
+  private static String tooltip(@Nonnull StoredItem item, boolean storedNearby) {
+    return item.name() + " x" + item.total() + (storedNearby ? " | In nearby storage" : "");
   }
 
   @Nonnull

@@ -49,5 +49,24 @@ Group {
       );
       Text: "";
     }
+
+    Group #StoredBadge {
+      Anchor: (Right: 3, Top: 3, Width: 18, Height: 18);
+      Background: #294b39;
+      Padding: 1;
+      Visible: false;
+
+      Label #StoredIndicator {
+        Anchor: (Full: 0);
+        Style: (
+          FontSize: 14,
+          TextColor: #b8f5c5,
+          HorizontalAlignment: Center,
+          VerticalAlignment: Center,
+          RenderBold: true,
+        );
+        Text: "+";
+      }
+    }
   }
 }
